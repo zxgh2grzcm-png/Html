@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>MaliApp</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script type="module">
+/* ================= FIREBASE ================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* 🔐 config */
+const firebaseConfig = {
+  apiKey: "AIzaSyBfMUa-8vsUZ_1r5F79iSKOKqMre99lwbI",
+  authDomain: "maliapp-63f91.firebaseapp.com",
+  projectId: "maliapp-63f91",
+  storageBucket: "maliapp-63f91.appspot.com",
+  messagingSenderId: "901870433172",
+  appId: "1:901870433172:web:325b2312af72099279d581"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ================= HELPERS ================= */
+function randomCode() {
+  return Math.random().toString(36).substring(2, 10);
+}
+
+/* ================= REGISTER ================= */
+window.register = async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+
+  if (!email || !password) {
+    alert("❌ عمّر الإيميل والباس");
+    return;
+  }
+
+  try {
+    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = userCred.user.uid;
+
+    await setDoc(doc(db, "users", uid), {
+      email,
+      balance: 0,
+      level: 1,
+      team: [],
+      referralCode: randomCode(),
+      createdAt: Date.now()
+    });
+
+    alert("✅ حسابك تخلق");
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+/* ================= LOGIN ================= */
+window.login = async () => {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+/* ================= AUTH STATE ================= */
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    authBox.style.display = "none";
+    appBox.style.display = "block";
+
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    const data = snap.data();
+
+    balance.innerText = data.balance;
+    level.innerText = data.level;
+    invite.innerText = location.origin + "?ref=" + data.referralCode;
+  }
+});
+
+/* ================= SALARY ================= */
+window.salary = async () => {
+  const user = auth.currentUser;
+  const ref = doc(db, "users", user.uid);
+
+  await updateDoc(ref, {
+    balance: 50
+  });
+
+  balance.innerText = 50;
+  alert("💼 تم سحب الراتب");
+};
+
+</script>
+
+<style>
+body {
+  font-family: Arial;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.box {
+  background:#fff;
+  width:330px;
+  padding:20px;
+  border-radius:14px;
+  text-align:center;
+}
+input,button {
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+}
+button {
+  background:#667eea;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box" id="authBox">
+  <h2>MaliApp</h2>
+  <input id="emailInput" type="email" placeholder="Email">
+  <input id="passwordInput" type="password" placeholder="Password">
+  <button onclick="register()">تسجيل</button>
+  <button onclick="login()">دخول</button>
+</div>
+
+<div class="box" id="appBox" style="display:none">
+  <h3>مرحبا 👋</h3>
+  <p>الرصيد: <span id="balance">0</span> مالي</p>
+  <p>المستوى: <span id="level">1</span></p>
+  <p>رابط الدعوة:</p>
+  <small id="invite"></small>
+  <br><br>
+  <button onclick="salary()">💼 سحب راتب</button>
+</div>
+
+</body>
+</html>
